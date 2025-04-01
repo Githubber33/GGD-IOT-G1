@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Live Temperatuurdata</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Live Temperatuurmetingen</h1>
+
+        <!-- Grafiek -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <canvas id="temperatureChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Tabel met data -->
+        <div class="card">
+            <div class="card-body">
+                <h3 class="mb-3">Laatste metingen</h3>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tijdstip</th>
+                            <th>Temperatuur (°C)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let temperatureChart; // Variabele voor de grafiek
+
+        function fetchData() {
+            fetch('/data')
+            .then(response => response.json())
+            .then(data => {
+                let tableBody = document.getElementById('data-body');
+                tableBody.innerHTML = ''; // Leeg de tabel
+
+                let labels = [];
+                let temperatures = [];
+
+                data.forEach(row => {
+                    let timestamp = new Date(row[0]).toLocaleTimeString();
+                    let temperature = row[1];
+
+                    labels.push(timestamp);
+                    temperatures.push(temperature);
+
+                    let tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${timestamp}</td><td>${temperature} °C</td>`;
+                    tableBody.appendChild(tr);
+                });
+
+                updateChart(labels.reverse(), temperatures.reverse());
+            });
+        }
+
+        function updateChart(labels, temperatures) {
+            if (!temperatureChart) {
+                let ctx = document.getElementById('temperatureChart').getContext('2d');
+                temperatureChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Temperatuur (°C)',
+                            data: temperatures,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderWidth: 2,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { 
+                                title: { display: true, text: 'Tijd' } 
+                            },
+                            y: { 
+                                title: { display: true, text: 'Temperatuur (°C)' },
+                                ticks: {
+                                    stepSize: 1,   // 🔥 Schaal per 1 graad
+                                    beginAtZero: false, // Laat de schaal dynamisch starten
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                temperatureChart.data.labels = labels;
+                temperatureChart.data.datasets[0].data = temperatures;
+                temperatureChart.update();
+            }
+        }        
+        setInterval(fetchData, 5000); // Vernieuw elke 5 seconden
+        window.onload = fetchData; // Laad data bij start
+    </script>
+
+    <!-- Bootstrap JS (optioneel, alleen nodig als je Bootstrap interacties gebruikt) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
