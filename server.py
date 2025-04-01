@@ -4,7 +4,7 @@ import psycopg2
 app = Flask(__name__)
 
 # Database configuratie
-DB_HOST = "192.168.178.96"
+DB_HOST = "192.168.178.96" #mogelijk fout
 DB_NAME = "temp"
 DB_USER = "project-ggd"
 DB_PASSWORD = "Webtech2025"
