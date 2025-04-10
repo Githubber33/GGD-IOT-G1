@@ -1,32 +1,37 @@
-import network  # Handles the Wi-Fi connection
+import network
 import micropg_lite
 import machine
 import time
 
-### Updated Wi-Fi connection data
-ssid = 'WIFI_SSID'  # Replace with your Wi-Fi SSID
-password = 'WIFI_PASSWORD'  # Replace with your Wi-Fi password
+# === 📡 Wi-Fi instellingen ===
+ssid = 'LT-Thijs'       # <-- Vervang dit met je echte Wi-Fi naam
+password = 'ThijsGamesNL'  # <-- Vervang dit met je echte Wi-Fi wachtwoord
 
-# Connect to the network
+# === 🔖 Uniek device ID per Pico ===
+device_id = "Reizigerkamer 1"   # <-- Verander dit voor elke nieuwe Pico (bv. pico_002, pico_003, etc.)
+
+
+# VANAF hier hoef je niks te doen....
+
+# === 🌐 Verbinden met Wi-Fi ===
 print("Connecting to Wi-Fi...")
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 wlan.connect(ssid, password)
 
-# Wait for connection
 while not wlan.isconnected():
     time.sleep(1)
 
 print("Wi-Fi connected:", wlan.ifconfig())
 
-# Connect to PostgreSQL
+# === 🗄️ Verbinden met PostgreSQL database ===
 print("Connecting to PostgreSQL database...")
 try:
     conn = micropg_lite.connect(
-        host='52.90.199.127',  # Replace with your server IP address
-        user='myuser',  # Replace with your username
-        password='mypassword',  # Replace with your password
-        database='mydatabase'
+        host='139.162.160.244',    # <-- Jouw cloud server IP of hostname
+        user='project-ggd',           # <-- Jouw databasegebruikersnaam
+        password='Webtech2025',   # <-- Jouw databasewachtwoord
+        database='temp'    # <-- Naam van jouw database
     )
     print("Database connection successful.")
 except Exception as e:
@@ -35,43 +40,36 @@ except Exception as e:
 
 cur = conn.cursor()
 
-# Function to read internal temperature
+# === 🌡️ Temperatuur uitlezen functie ===
 def read_internal_temperature():
     print("Reading internal temperature...")
-    adc = machine.ADC(4)  # Internal temperature sensor is usually on GPIO 4
-    raw_value = adc.read_u16()  # Read raw value (0-65535)
-
-    # Convert raw value to temperature in Celsius
-    temperature = (raw_value / 65535) * 3.3  # Convert to voltage (0 to 3.3V)
-    temperature = (temperature - 0.5) * 100  # Convert to Celsius (0.5V corresponds to 0°C)
-
-    print(f"Raw value: {raw_value}, Temperature: {temperature:.2f}°C")
+    adc = machine.ADC(4)  # Interne sensor (GPIO 4)
+    raw_value = adc.read_u16()
+    voltage = (raw_value / 65535) * 3.3
+    temperature = (voltage - 0.5) * 100
+    print(f"Raw: {raw_value}, Temp: {temperature:.2f}°C")
     return round(temperature, 2)
 
-# Loop to insert temperature data every 10 seconds
+# === 🔁 Loop: Elke 10s temperatuur loggen ===
 try:
     while True:
-        # Record the start time of the loop
         start_time = time.time()
-
-        # Read internal temperature
         temperature = read_internal_temperature()
 
-        # Insert temperature into the sensor_data table
-        print("Inserting temperature data into the database...")
+        print("Inserting data into database...")
         try:
-            # Convert temperature to string before inserting
-            cur.execute('INSERT INTO sensor_data (temperature) VALUES (%s)', (str(temperature),))
+            cur.execute(
+                'INSERT INTO sensor_data (temperature, device_id) VALUES (%s, %s)',
+                (str(temperature), device_id)
+            )
             conn.commit()
-            print(f"Inserted temperature: {temperature:.2f}°C")
+            print(f"Data inserted: {temperature}°C - {device_id}")
         except Exception as e:
             print("Error inserting data:", e)
+        
 
-        # Calculate how long the operations took
-        elapsed_time = time.time() - start_time
-
-        # Sleep for the remaining time to ensure the loop runs every 10 seconds
-        sleep_time = 10 - elapsed_time
+        # Wachten tot volgende meting
+        sleep_time = 5 - (time.time() - start_time)
         if sleep_time > 0:
             time.sleep(sleep_time)
 
@@ -79,4 +77,5 @@ except KeyboardInterrupt:
     print("Program stopped by user.")
 finally:
     conn.close()
-    print("Connection closed.")
+    print("Database connection closed.")
+
