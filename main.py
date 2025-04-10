@@ -2,6 +2,7 @@ import network  # Handles the Wi-Fi connection
 import micropg_lite
 import machine
 import time
+import ubinascii
 
 ### Updated Wi-Fi connection data
 ssid = 'WIFI_SSID'  # Replace with your Wi-Fi SSID
@@ -12,6 +13,8 @@ print("Connecting to Wi-Fi...")
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 wlan.connect(ssid, password)
+mac = ubinascii.hexlify(wlan.config('mac'), b':').decode()
+print("MAC Address:", mac)
 
 # Wait for connection
 while not wlan.isconnected():
@@ -23,10 +26,10 @@ print("Wi-Fi connected:", wlan.ifconfig())
 print("Connecting to PostgreSQL database...")
 try:
     conn = micropg_lite.connect(
-        host='52.90.199.127',  # Replace with your server IP address
-        user='myuser',  # Replace with your username
-        password='mypassword',  # Replace with your password
-        database='mydatabase'
+        host='192.168.178.96',  # Replace with your server IP address
+        user='temp',  # Replace with your username
+        password='project-ggd',  # Replace with your password
+        database='Webtech2025'
     )
     print("Database connection successful.")
 except Exception as e:
@@ -61,7 +64,7 @@ try:
         print("Inserting temperature data into the database...")
         try:
             # Convert temperature to string before inserting
-            cur.execute('INSERT INTO sensor_data (temperature) VALUES (%s)', (str(temperature),))
+            cur.execute('INSERT INTO sensor_data (temperature, mac_address) VALUES (%s)', (str(temperature), mac))
             conn.commit()
             print(f"Inserted temperature: {temperature:.2f}°C")
         except Exception as e:
@@ -80,3 +83,4 @@ except KeyboardInterrupt:
 finally:
     conn.close()
     print("Connection closed.")
+    

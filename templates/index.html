@@ -14,11 +14,7 @@
         <h1 class="text-center mb-4">Live Temperatuurmetingen</h1>
 
         <!-- Grafiek -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <canvas id="temperatureChart"></canvas>
-            </div>
-        </div>
+        <div id="charts-container"></div>
 
         <!-- Tabel met data -->
         <div class="card">
@@ -38,74 +34,63 @@
     </div>
 
     <script>
-        let temperatureChart; // Variabele voor de grafiek
-
         function fetchData() {
             fetch('/data')
             .then(response => response.json())
             .then(data => {
-                let tableBody = document.getElementById('data-body');
-                tableBody.innerHTML = ''; // Leeg de tabel
+                const container = document.getElementById('charts-container');
+                container.innerHTML = ''; // Leegmaken
 
-                let labels = [];
-                let temperatures = [];
+                Object.entries(data).forEach(([mac, readings]) => {
+                    const labels = readings.map(r => new Date(r.time).toLocaleTimeString()).reverse();
+                    const temperatures = readings.map(r => r.temperature).reverse();
 
-                data.forEach(row => {
-                    let timestamp = new Date(row[0]).toLocaleTimeString();
-                    let temperature = row[1];
+                    // Maak een card met een canvas voor de grafiek
+                    const card = document.createElement('div');
+                    card.className = 'card mb-4 shadow-sm';
+                    card.innerHTML = `
+                        <div class="card-body">
+                            <h5 class="card-title">MAC-adres: ${mac}</h5>
+                            <canvas id="chart-${mac.replace(/[:.]/g, '')}" height="100"></canvas>
+                        </div>
+                    `;
+                    container.appendChild(card);
 
-                    labels.push(timestamp);
-                    temperatures.push(temperature);
-
-                    let tr = document.createElement('tr');
-                    tr.innerHTML = `<td>${timestamp}</td><td>${temperature} °C</td>`;
-                    tableBody.appendChild(tr);
-                });
-
-                updateChart(labels.reverse(), temperatures.reverse());
-            });
-        }
-
-        function updateChart(labels, temperatures) {
-            if (!temperatureChart) {
-                let ctx = document.getElementById('temperatureChart').getContext('2d');
-                temperatureChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Temperatuur (°C)',
-                            data: temperatures,
-                            borderColor: 'rgb(255, 99, 132)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            borderWidth: 2,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            x: { 
-                                title: { display: true, text: 'Tijd' } 
+                    // Maak de grafiek
+                    const ctx = card.querySelector('canvas').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Temperatuur (°C)',
+                                data: temperatures,
+                                borderColor: 'rgb(54, 162, 235)',
+                                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                borderWidth: 2,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: { display: true }
                             },
-                            y: { 
-                                title: { display: true, text: 'Temperatuur (°C)' },
-                                ticks: {
-                                    stepSize: 1,   // 🔥 Schaal per 1 graad
-                                    beginAtZero: false, // Laat de schaal dynamisch starten
+                            scales: {
+                                x: { title: { display: true, text: 'Tijd' } },
+                                y: { 
+                                    title: { display: true, text: 'Temperatuur (°C)' },
+                                    beginAtZero: false
                                 }
                             }
                         }
-                    }
+                    });
                 });
-            } else {
-                temperatureChart.data.labels = labels;
-                temperatureChart.data.datasets[0].data = temperatures;
-                temperatureChart.update();
-            }
-        }        
+            });
+        }
+
         setInterval(fetchData, 5000); // Vernieuw elke 5 seconden
-        window.onload = fetchData; // Laad data bij start
+        window.onload = fetchData;    // Laad data bij opstart
     </script>
 
     <!-- Bootstrap JS (optioneel, alleen nodig als je Bootstrap interacties gebruikt) -->
